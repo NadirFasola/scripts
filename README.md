@@ -34,8 +34,8 @@ The `install.sh` script manages your PATH automatically by adding `$XDG_DATA_HOM
 
 After installing scripts via `install.sh`, they are available globally in your `PATH`, so you can call them from anywhere without specifying the full path.
 
-- [Installing](#Installingscripts)
-- [Uninstalling](#Uninstallingscripts)
+- [Installing](#installing-scripts)
+- [Uninstalling](#uninstalling-scripts)
 - [bootstrap_poetry_ml.sh](#bootstrap_poetry_mlsh)
 
 ### Installing scripts
