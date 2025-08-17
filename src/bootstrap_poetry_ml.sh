@@ -88,9 +88,46 @@ touch data/.gitkeep
 cat > readme.md <<'readme'
 # $project_slug
 
-a modern ml/data science python project using **conda/mamba** for the environment and **poetry** for python package management.
+A modern ML/Data Science python project using **conda/mamba** for the environment and **poetry** for the python package management.
 
-## quickstart
+This scaffold wires together a small, reproducible developer experience:
+
+- `environment.yml` (managed by conda/mamba) installs the Python interpreter and system-level packages (poetry, jupyterlab, ipykernel, etc.).
+- `pyproject.toml` (managed by Poetry) declares your Python dependencies and scripts.
+- `Makefile` provides convenient developer shortcuts (create env, install deps, run linters/tests, register kernels).
+
+## What the bootstrap script does for you
+
+If you ran the provided `bootstrap_poetry_conda_ml.sh` script, it already performs these steps for you (when it completes successfully):
+
+1. **Creates or updates the conda environment** named in `environment.yml` (uses `mamba` if available).
+2. **Installs the Poetry-managed project into that conda env** (the script runs `poetry config virtualenvs.create false` and `poetry install` inside the env so the dependencies live in the conda interpreter).
+3. **Installs pre-commit hooks** inside the environment so hooks are active for local commits.
+4. **Registers a Jupyter kernel** for the env (installed with `--user` and named after the env).
+5. **Makes an initial git commit** with the scaffold files (if `git` is available).
+
+So — after the script finishes you usually do not need to re-run these install commands manually.
+
+## Quickstart (after running the bootstrap script)
+
+```bash
+# 1) activate the environment for an interactive shell
+conda activate <env-name>
+
+# 2) verify installation and run project CLI help
+poetry run $package_name --help
+
+# 3) run linters and tests (recommended)
+make lint
+make test
+```
+
+Notes:
+- The bootstrapper used `poetry config virtualenvs.create false` so Poetry installs into the conda environment. That is intentional: you get a single interpreter for CLI, notebooks and tests.
+- If you prefer not to activate the env, you can run any command using `conda run -n <env-name> <command>` (the script already uses `conda run` for installations).
+- If kernel registration fails in your environment, try `python -m ipykernel install --user --name <env-name>` manually from an activated env, or use `--sys-prefix` inside containers/virtualenvs.
+
+## Manual quickstart (if you did not run the bootstrapper)
 
 ```bash
 $conda_bin env create -f environment.yml
@@ -99,6 +136,15 @@ poetry config virtualenvs.create false
 poetry install --no-interaction --no-root
 pre-commit install
 python -m ipykernel install --user --name "$env_name_safe" --display-name "$project_slug (poetry)"
+```
+
+## CI and reproducibility tips
+- CI can reproduce the same steps by calling the same Make targets (e.g. `make env` then `make install`), or by calling the underlying commands directly.
+- The Makefile exposes overrides like `ENV_NAME`, `CONDA`, and `POETRY` (use `make env ENV_NAME=myenv`).
+
+## Caveats
+- Activation (`conda activate ...`) is a shell operation and cannot be performed by the bootstrap script in the caller's shell — you must activate the env in your terminal session.
+- If network or permission errors occur during bootstrap, rerun the failing step (the script is idempotent in normal cases but partial failures can leave state behind).
 ```
 readme
 
@@ -210,7 +256,7 @@ pre
 
 # --- makefile ----------------------------------------------------------------
 cat > makefile <<'mk'
-.phony: env install deps lint format typecheck test cov precommit hooks kernel clean export tree
+.PHONY: env install deps lint format typecheck test cov precommit hooks kernel clean export tree
 
 help:
 	@echo "targets: env install deps lint format typecheck test cov precommit hooks kernel clean export tree"
@@ -335,7 +381,4 @@ git add . >/dev/null 2>&1 || true
 git commit -m "chore: initial scaffold (conda+poetry ml project)" >/dev/null 2>&1 || true
 
 echo
-echo "✅ done! next steps:"
-echo " 1) conda activate $env_name"
-echo " 2) poetry run $package_name --help"
-echo " 3) make lint test"
+echo "✅ done!"
