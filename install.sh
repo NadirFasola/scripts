@@ -8,6 +8,10 @@ set -euo pipefail
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 TARGET_DIR="$XDG_DATA_HOME/scripts"
 
+# Repo root (assume this script lives in the repo root)
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+SRC_DIR="$REPO_ROOT/src"
+
 # Ensure the target directory exists (for installation)
 mkdir -p "$TARGET_DIR"
 
@@ -72,9 +76,17 @@ if [ -z "$SCRIPT" ]; then
     exit 1
 fi
 
-# Get absolute path of the script
-SCRIPT_PATH="$(realpath "$SCRIPT")"
-LINK_PATH="$TARGET_DIR/$(basename "$SCRIPT")"
+# Resolve script path relative to src/ if it exists there
+if [ -f "$SCRIPT" ]; then
+    SCRIPT_PATH="$(realpath "$SCRIPT")"
+elif [ -f "$SRC_DIR/$SCRIPT" ]; then
+    SCRIPT_PATH="$(realpath "$SRC_DIR/$SCRIPT")"
+else
+    echo "Script not found: $SCRIPT"
+    exit 1
+fi
+
+LINK_PATH="$TARGET_DIR/$(basename "$SCRIPT_PATH")"
 
 if [ "$UNINSTALL" -eq 1 ]; then
     if [ -L "$LINK_PATH" ]; then
@@ -95,6 +107,13 @@ else
         echo "Link or file already exists at $LINK_PATH"
         exit 1
     fi
+
+    # Ensure the script is executable
+    if [ ! -x "$SCRIPT_PATH" ]; then
+        echo "Making $SCRIPT_PATH executable"
+        chmod +x "$SCRIPT_PATH"
+    fi
+
     echo "Creating link: $LINK_PATH -> $SCRIPT_PATH"
     ln -s "$SCRIPT_PATH" "$LINK_PATH"
     update_path

@@ -15,39 +15,41 @@ I keep this folder in my `$PATH` so I can use these commands anywhere.
 
 ## Installation
 
-Clone the repo, make sure that scripts are executable, then use the `install.sh` script to link scripts from the `src/` folder into your local scripts directory:
+Clone the repo, then use the `install.sh` script to link scripts from the `src/` folder into your local scripts directory:
 
 ```bash
 git clone git@github.com:NadirFasola/scripts.git <download_folder>/scripts
 cd <download_folder>/scripts
 chmod +x ./install.sh
-chmod +x ./src/*.sh
 ```
 From here, you can install scripts from the `src/` folder:
 
 ```bash
-./install.sh src/<script>   # installs all scripts as symlinks to $XDG_DATA_HOME/scripts
+./install.sh <script>
 ```
+
 The `install.sh` script manages your PATH automatically by adding `$XDG_DATA_HOME/scripts` if needed.
 
 ## Usage
 
-- [bootstrap_poetry_ml.sh](#bootstrap_poetry_mlsh)
-
 After installing scripts via `install.sh`, they are available globally in your `PATH`, so you can call them from anywhere without specifying the full path.
 
-### Installing individual scripts
+- [Installing](#Installingscripts)
+- [Uninstalling](#Uninstallingscripts)
+- [bootstrap_poetry_ml.sh](#bootstrap_poetry_mlsh)
+
+### Installing scripts
 
 To install a specific script from the `src/` folder:
 
 ```bash
-./install.sh src/<script>
+./install.sh <script>
 ```
 
 To install all scripts at once:
 
 ```bash
-./install.sh src/*
+./install.sh *
 ```
 
 ### Uninstalling scripts
@@ -55,7 +57,7 @@ To install all scripts at once:
 Remove a single script:
 
 ```bash
-./install.sh -u src/<script>
+./install.sh -u <script>
 ```
 
 Remove all installed scripts and clean up the `$XDG_DATA_HOME/scripts` folder from `PATH`:
