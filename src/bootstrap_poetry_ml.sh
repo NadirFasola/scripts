@@ -1,149 +1,185 @@
-#!/usr/bin/env sh
-# A one-shot bootstrapper for a modern ML/Data Science Python project using
-# Miniforge/Mamba/Conda for the environment and Poetry for package management.
+#!/usr/bin/env bash
+# a one-shot bootstrapper for a modern ml/data science python project using
+# miniforge/mamba/conda for the environment and poetry for package management.
 #
-# Usage:
+# usage:
 #   bash bootstrap_poetry_conda_ml.sh <project-slug> [python-version] [env-name]
 #
-# Example:
+# example:
 #   bash bootstrap_poetry_conda_ml.sh fraudlab 3.11 fraudlab
 #
-# Strategy:
-#   • Conda manages the interpreter & system deps.
-#   • Poetry manages Python deps (installed into the Conda env).
+# strategy:
+#   • conda manages the interpreter & system deps.
+#   • poetry manages python deps (installed into the conda env).
 
 set -euo pipefail
 
-PROJECT_SLUG=${1:-ml-project}
-PY_VERSION=${2:-3.11}
-ENV_NAME=${3:-$PROJECT_SLUG}
+project_slug=${1:-ml-project}
+py_version=${2:-3.11}
+env_name=${3:-$project_slug}
 
-# Derive a valid Python package name from the project slug
-PACKAGE_NAME=${PROJECT_SLUG//-/_}
+# derive a valid python package name from the project slug
+package_name=${project_slug//-/_}
 
-# Pick mamba if present, otherwise fall back to conda
+# kernel-safe env name (underscores only)
+env_name_safe=${env_name//-/_}
+
+# pick mamba if present, otherwise fall back to conda
 if command -v mamba >/dev/null 2>&1; then
-	CONDA_BIN="mamba"
+	conda_bin="mamba"
 else
-	CONDA_BIN="conda"
+	conda_bin="conda"
 fi
 
-echo "==> Scaffolding project: $PROJECT_SLUG (package: $PACKAGE_NAME)"
-mkdir -p "PROJECT_SLUG" && cd "$PROJECT_SLUG"
+echo "==> scaffolding project: $project_slug (package: $package_name)"
+mkdir -p "$project_slug" && cd "$project_slug"
 
 # --- git ---------------------------------------------------------------------
-if ! command -v gig >/dev/null 2>&1; then
-	echo "[WARN] git not found; skipping git init"
+if ! command -v git >/dev/null 2>&1; then
+	echo "[warn] git not found; skipping git init"
 else
 	git init -q >/dev/null 2>&1 || true
-	git branch -M main >/dev/null 2>&1 || true
+	git branch -m main >/dev/null 2>&1 || true
 fi
 
 # --- directories -------------------------------------------------------------
-mkdir -p src/"$PACKAGE_NAME"/{data,features,models,utils,viz}
+mkdir -p src/"$package_name"/{data,features,models,utils,viz}
 mkdir -p tests notebooks scripts configs docs
 mkdir -p data/{raw,interim,processed,external}
 
+# helper to escape replacement strings for sed
+_esc() { printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'; }
+
 # --- .gitignore --------------------------------------------------------------
-cat > .gitignore <<'GIT'
-# Byte-compiled / optimized / DLL files
+cat > .gitignore <<'git'
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environments
 .venv/
 .conda/
 
-# Distribution / packaging
 build/
 dist/
 *.egg-info/
 .eggs/
 
-# Jupyter & data
 .ipynb_checkpoints/
 .notebooks_cache/
 .DS_Store
 
-# Project data (kept out of git)
 data/
 !data/.gitkeep
 
-# Logs / misc
 *.log
 .coverage
 htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Environment files
 .env
 .env.local
 .env.*.local
-GIT
+git
 
 touch data/.gitkeep
 
-# --- README ------------------------------------------------------------------
-cat > README.md <<README
-# $PROJECT_SLUG
+# --- readme ------------------------------------------------------------------
+cat > readme.md <<'readme'
+# $project_slug
 
-A modern ML/Data Science Python project using **Conda/Mamba** for the environment and **Poetry** for Python package management.
+a modern ml/data science python project using **conda/mamba** for the environment and **poetry** for python package management.
 
-## Quickstart
+## quickstart
 
 ```bash
-$CONDA_BIN env create -f environment.yml
-conda activate $ENV_NAME
+$conda_bin env create -f environment.yml
+conda activate $env_name
 poetry config virtualenvs.create false
 poetry install --no-interaction --no-root
 pre-commit install
-python -m ipykernel install --user --name "$ENV_NAME" --display-name "$PROJECT_SLUG (poetry)"
+python -m ipykernel install --user --name "$env_name_safe" --display-name "$project_slug (poetry)"
 ```
+readme
 
-README
+# substitute shell variables in readme.md (literal $... in file -> replace)
+sed -i "s/\$project_slug/$( _esc "$project_slug" )/g" readme.md
+sed -i "s/\$conda_bin/$( _esc "$conda_bin" )/g" readme.md
+sed -i "s/\$env_name/$( _esc "$env_name" )/g" readme.md
+# replace quoted env_name_safe occurrence (with quotes in file) and unquoted ones
+sed -i "s/\$env_name_safe/$( _esc "$env_name_safe" )/g" readme.md
 
-# --- environment.yml (Conda: only Python + non-Python deps)
-cat > environment.yml <<ENVYAML
-name: $ENV_NAME
+# --- environment.yml (conda: only python + non-python deps)
+cat > environment.yml <<'envyaml'
+name: $env_name
 channels:
   - conda-forge
+  - defaults
 dependencies:
-  - python=$PY_VERSION
+  - python=$py_version
   - pip
   - poetry
   - jupyterlab
   - ipykernel
-ENVYAML
+envyaml
 
-# --- pyproject.toml (Poetry) -------------------------------------------------
-cat > pyproject.toml <<TOML
+# substitute variables in environment.yml
+sed -i "s/\$env_name/$( _esc "$env_name" )/g" environment.yml
+sed -i "s/\$py_version/$( _esc "$py_version" )/g" environment.yml
+
+# --- pyproject.toml (poetry) -------------------------------------------------
+cat > pyproject.toml <<'toml'
 [tool.poetry]
-name = "$PROJECT_SLUG"
+name = "$project_slug"
 version = "0.1.0"
-description = "Modern ML/Data Science project scaffold (Conda + Poetry)"
-authors = ["Your Name <you@example.com>"]
-readme = "README.md"
-packages = [{ include = "$PACKAGE_NAME", from = "src" }]
+description = "modern ml/data science project scaffold (conda + poetry)"
+authors = ["your name <you@example.com>"]
+readme = "readme.md"
+packages = [{ include = "$package_name", from = "src" }]
 
 [tool.poetry.dependencies]
-python = "^$PY_VERSION"
+python = ">=${py_version},<${py_version%.*}$((${py_version##*.}+1))"
+numpy = "*"
+pandas = "*"
+scikit-learn = "*"
+scipy = "*"
+matplotlib = "*"
+rich = "*"
+python-dotenv = "*"
+pydantic = "*"
+typer = "*"
+hydra-core = "*"
 
 [tool.poetry.group.dev.dependencies]
-# Dev dependencies will be added by poetry add -G dev ...
+ruff = "*"
+mypy = "*"
+pytest = "*"
+pytest-cov = "*"
+pre-commit = "*"
+ipykernel = "*"
 
 [tool.poetry.scripts]
-$PACKAGE_NAME = "$PACKAGE_NAME.cli:app"
+$package_name = "$package_name.cli:app"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+toml
 
-TOML
+# Now substitute simple variables in pyproject.toml
+sed -i "s/\$project_slug/$( _esc "$project_slug" )/g" pyproject.toml
+sed -i "s/\$package_name/$( _esc "$package_name" )/g" pyproject.toml
+sed -i "s/\$py_version/$( _esc "$py_version" )/g" pyproject.toml
+
+# Replace the complex python spec expression with an evaluated form
+py_major=${py_version%.*}
+py_minor=${py_version##*.}
+evaluated_python_spec=">=${py_version},<${py_major}.$((py_minor+1))"
+# replace the entire right-hand side of the python = "..." line
+sed -i -E "s/^(python = \\\").*(\\\")/\\1$( _esc "$evaluated_python_spec" )\\2/" pyproject.toml
 
 # --- pre-commit --------------------------------------------------------------
-cat > .pre-commit-config.yml <<'PRE'
+cat > .pre-commit-config.yml <<'pre'
 repos:
   - repo: local
     hooks:
@@ -170,14 +206,14 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
-PRE
+pre
 
-# --- Makefile ----------------------------------------------------------------
-cat > Makefile <<'MK'
-.PHONY: env install deps lint format typecheck test cov precommit hooks kernel clean export tree
+# --- makefile ----------------------------------------------------------------
+cat > makefile <<'mk'
+.phony: env install deps lint format typecheck test cov precommit hooks kernel clean export tree
 
 help:
-	@echo "Targets: env install deps lint format typecheck test cov precommit hooks kernel clean export tree"
+	@echo "targets: env install deps lint format typecheck test cov precommit hooks kernel clean export tree"
 
 env:
 	@if command -v mamba >/dev/null 2>&1; then mamba env update -f environment.yml --prune; \
@@ -186,10 +222,6 @@ env:
 install:
 	poetry config virtualenvs.create false
 	poetry install --no-interaction --no-root
-
-deps:
-	poetry add numpy pandas scikit-learn scipy matplotlib rich python-dotenv pydantic typer hydra-core
-	poetry add -G dev ruff mypy pytest pytest-cov pre-commit ipykernel
 
 lint:
 	poetry run ruff check .
@@ -213,7 +245,7 @@ hooks:
 	poetry run pre-commit install
 
 kernel:
-	python -m ipykernel install --user --name $(shell basename $$CONDA_PREFIX) --display-name "$(shell basename $$PWD) (poetry)"
+	python -m ipykernel install --user --name $(shell basename $$conda_prefix | tr '-' '_') --display-name "$(shell basename $$pwd) (poetry)"
 
 clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache dist build htmlcov
@@ -224,20 +256,20 @@ export:
 	else conda env export --from-history > environment.yml; fi
 
 tree:
-	@{ command -v tree >/dev/null 2>&1 && tree -a -I '.git|.ruff_cache|.mypy_cache|.pytest_cache|__pycache__'; } || \
+	@{ command -v tree >/dev/null 2>&1 && tree -a -i '.git|.ruff_cache|.mypy_cache|.pytest_cache|__pycache__'; } || \
 	{ echo "(install 'tree' for nicer output)"; find . -maxdepth 2 -type d | sort; }
-MK
+mk
 
 # --- minimal package code ----------------------------------------------------
-cat > src/$PACKAGE_NAME/__init__.py <<'PY'
+cat > src/$package_name/__init__.py <<'py'
 __version__ = "0.1.0"
-PY
+py
 
-cat > src/$PACKAGE_NAME/cli.py <<'PY'
+cat > src/$package_name/cli.py <<'py'
 import pathlib
 import typer
 
-app = typer.Typer(help="Command-line interface for the project.")
+app = typer.Typer(help="command-line interface for the project.")
 
 @app.command()
 def hello(name: str = "world") -> None:
@@ -253,54 +285,57 @@ def train(
 
 if __name__ == "__main__":
     app()
-PY
-
+py
 
 # --- tests -------------------------------------------------------------------
-cat > tests/test_smoke.py <<PY
-from $PACKAGE_NAME import __version__
+cat > tests/test_smoke.py <<'py'
+from $package_name import __version__
 
 def test_version():
     assert __version__ == "0.1.0"
-PY
+py
+
+# substitute package name in tests
+sed -i "s/\$package_name/$( _esc "$package_name" )/g" tests/test_smoke.py
 
 # --- example notebook placeholder --------------------------------------------
-cat > notebooks/README.md <<'NR'
-Place notebooks here. Consider keeping them light and moving code into src/.
-NR
+cat > notebooks/readme.md <<'nr'
+place notebooks here. consider keeping them light and moving code into src/.
+nr
 
 # --- .env example ------------------------------------------------------------
-cat > .env.example <<'ENV'
-APP_ENV=dev
-LOG_LEVEL=INFO
-ENV
+cat > .env.example <<'env'
+app_env=dev
+log_level=info
+env
 
-# --- Finish up ---------------------------------------------------------------
-echo "==> Creating/Updating Conda env '$ENV_NAME' (python=$PY_VERSION) with $CONDA_BIN"
-$CONDA_BIN env update -f environment.yml --prune
+# --- finish up ---------------------------------------------------------------
+echo "==> creating/updating conda env '$env_name' (python=$py_version) with $conda_bin"
 
-# Install base (empty) Poetry project into the Conda env
-echo "==> Installing Poetry project into Conda env"
-$CONDA_BIN run -n "$ENV_NAME" poetry config virtualenvs.create false
-$CONDA_BIN run -n "$ENV_NAME" poetry install --no-interaction --no-root
+if ! $conda_bin env list | awk '{print $1}' | grep -qx "$env_name"; then
+    echo "==> creating new conda env: $env_name"
+    $conda_bin env create -f environment.yml
+else
+    echo "==> updating existing conda env: $env_name"
+    $conda_bin env update -f environment.yml --prune
+fi
 
-# Add core deps via Poetry so they are versioned in lockfile
-echo "==> Adding core ML & dev dependencies via Poetry"
-$CONDA_BIN run -n "$ENV_NAME" poetry add numpy pandas scikit-learn scipy matplotlib rich python-dotenv pydantic typer hydra-core
-$CONDA_BIN run -n "$ENV_NAME" poetry add -G dev ruff mypy pytest pytest-cov pre-commit ipykernel
+echo "==> installing poetry project into conda env"
+$conda_bin run -n "$env_name" python -m poetry config virtualenvs.create false
+$conda_bin run -n "$env_name" python -m poetry install --no-interaction --no-root
 
-# Pre-commit hooks
-$CONDA_BIN run -n "$ENV_NAME" pre-commit install || true
+echo "==> installing pre-commit hooks"
+$conda_bin run -n "$env_name" python -m poetry run pre-commit install || true
 
-# Jupyter kernel
-$CONDA_BIN run -n "$ENV_NAME" python -m ipykernel install --user --name "$ENV_NAME" --display-name "$PROJECT_SLUG (poetry)" || true
+echo "==> registering jupyter kernel ($env_name_safe)"
+$conda_bin run -n "$env_name" python -m ipykernel install --user --name "$env_name_safe" --display-name "$project_slug (poetry)" || true
 
-# Initial commit
+# initial commit
 git add . >/dev/null 2>&1 || true
-git commit -m "chore: initial scaffold (conda+poetry ML project)" >/dev/null 2>&1 || true
+git commit -m "chore: initial scaffold (conda+poetry ml project)" >/dev/null 2>&1 || true
 
-echo "\n✅ Done! Next steps:"
-echo "  1) conda activate $ENV_NAME"
-echo "  2) make deps   # to add core deps (if not run automatically)"
-echo "  3) poetry run $PACKAGE_NAME --help"
-echo "  4) make lint test"
+echo
+echo "✅ done! next steps:"
+echo " 1) conda activate $env_name"
+echo " 2) poetry run $package_name --help"
+echo " 3) make lint test"
