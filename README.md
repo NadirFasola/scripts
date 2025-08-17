@@ -51,7 +51,7 @@ make deps
 
 This is my personal repo: I regularly tweak scripts here.
 
-If you modify a script, commit the change:
+If you modify a script, commit the change according to the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```bash
 git add <script>
