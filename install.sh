@@ -42,21 +42,45 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+get_shell_rc_file() {
+    case "$(basename "$SHELL")" in
+        bash)
+            echo "$HOME/.bashrc"
+            ;;
+        zsh)
+            echo "$HOME/.zprofile"   # better than .zshrc for PATH setup
+            ;;
+        fish)
+            echo "$HOME/.config/fish/config.fish"
+            ;;
+        *)
+            echo "$HOME/.profile"    # fallback
+            ;;
+    esac
+}
+
 update_path() {
-    # Ensure TARGET_DIR is in PATH, add to ~/.profile if needed
+    RC_FILE="$(get_shell_rc_file)"
     if ! echo "$PATH" | grep -q "$TARGET_DIR"; then
-        echo "Adding $TARGET_DIR to PATH in ~/.profile"
-        echo "" >> ~/.profile
-        echo "# Added by install.sh" >> ~/.profile
-        echo "export PATH=\"$TARGET_DIR:\$PATH\"" >> ~/.profile
+        echo "Adding $TARGET_DIR to PATH in $RC_FILE"
+        {
+            echo ""
+            echo "# Added by install.sh"
+            if [ "$(basename "$SHELL")" = "fish" ]; then
+                echo "set -Ux PATH $TARGET_DIR \$PATH"
+            else
+                echo "export PATH=\"$TARGET_DIR:\$PATH\""
+            fi
+        } >> "$RC_FILE"
+        eval "export PATH=$TARGET_DIR:$PATH"
     fi
 }
 
 remove_from_path() {
-    # Remove TARGET_DIR from ~/.profile
-    if grep -q "$TARGET_DIR" ~/.profile; then
-        echo "Removing $TARGET_DIR from PATH in ~/.profile"
-        sed -i.bak "\|$TARGET_DIR|d" ~/.profile
+    RC_FILE="$(get_shell_rc_file)"
+    if [ -f "$RC_FILE" ] && grep -q "$TARGET_DIR" "$RC_FILE"; then
+        echo "Removing $TARGET_DIR from PATH in $RC_FILE"
+        sed -i.bak "\|$TARGET_DIR|d" "$RC_FILE"
     fi
 }
 
