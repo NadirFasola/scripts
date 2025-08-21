@@ -6,9 +6,9 @@ I keep this folder in my `$PATH` so I can use these commands anywhere.
 ## Features
 
 - **Project scaffolding:**  
-  - `src/bootstrap_poetry_ml.sh`: scaffold a modern ML/Data Science project using Conda/Mamba + Poetry + pre-commit tooling.
+  - `src/bootstrap_uv.sh`: scaffolds a modern ML/Data Science project using **Conda**/**Mamba** for the environment and **uv** for lightning-fast Python package management.
 
-- **Install script:** `install.sh`: install or uninstall scripts from `src/` to `$XDG_DATA_HOME/scripts` as symlinks, automatically managing your PATH. Supports individual script installation, removal, and full cleanup.
+- **Install script:** `install.sh`: installs or uninstalls scripts from `src/` to `$XDG_DATA_HOME/scripts` as symlinks, automatically managing your PATH. Supports individual script installation, removal, and full cleanup.
 
 - **Extendable toolbox:**
   - Add other scripts as needed (e.g., data helpers, cluster submission templates, git shortcuts).
@@ -66,21 +66,29 @@ Remove all installed scripts and clean up the `$XDG_DATA_HOME/scripts` folder fr
 ./install.sh -U
 ```
 
-### bootstrap_poetry_ml.sh
+### bootstrap_uv_ml.sh
+
+This script sets up a complete, production-ready project structure for data science and machine learning projects. It uses `conda`/`mamba` for the base environment and `uv` for Python dependency management.
 
 After installing via install.sh, you can use it directly:
 
 ```bash
 # Scaffold a new ML project
-bootstrap_poetry_ml.sh <project_slug> [python-version] [env-name]
+bootstrap_uv_ml.sh <project_slug> [python-version] [env-name]
 ```
 
-Then:
+The script will create the project directory, set up the conda environment, install all dependencies, and initialise a git repository.
+
+Once it's finished, you can start working immediately:
 
 ```bash
 cd <project-slug>
 conda activate <env-name>
-make deps
+
+# Your new project is ready to go!
+# Try running linters or tests:
+make lint
+make test
 ```
 
 ## Contributing/Modifying
@@ -98,5 +106,3 @@ git push
 ## License
 
 This repository is licensed under the [MIT License](LICENSE).
-
-You are free to use, modify, and distribute these scripts with proper attribution.
