@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # A one-shot bootstrapper for a modern ml/data science python project using
 # miniforge/mamba/conda for the environment and uv for package management.
 #
@@ -13,6 +13,11 @@
 #   • uv manages python deps (installed into the conda env).
 
 set -euo pipefail
+
+# --- user prompts ------------------------------------------------------------
+echo "==> Please enter your name and email for project metadata."
+read -rp "Enter your full name: " user_name
+read -rp "Enter your email address: " user_email
 
 # --- script arguments --------------------------------------------------------
 project_slug=${1:-ml-project}
@@ -187,7 +192,6 @@ cat > environment.yml <<'ENVYAML'
 name: $env_name
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - python=$py_version
   - pip
@@ -211,7 +215,7 @@ name = "$project_slug"
 version = "0.1.0"
 description = "modern ml/data science project scaffold (conda + uv)"
 authors = [
-  { name="<Your Name>", email="<you@example.com>" },
+  { name="<name>", email="<email>" },
 ]
 readme = "README.md"
 requires-python = ">=$py_version"
@@ -243,6 +247,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pre-commit",
+    "ipykernel",
 ]
 
 [project.scripts]
@@ -250,6 +255,8 @@ $package_name = "$package_name.cli:app"
 TOML
 
 # substitute variables in pyproject.toml
+sed -i "s/<name>/$( _esc "$user_name" )/g" pyproject.toml
+sed -i "s/<email>/$( _esc "$user_email" )/g" pyproject.toml
 sed -i "s/\$project_slug/$( _esc "$project_slug" )/g" pyproject.toml
 sed -i "s/\$package_name/$( _esc "$package_name" )/g" pyproject.toml
 sed -i "s/\$py_version/$( _esc "$py_version" )/g" pyproject.toml
@@ -402,14 +409,14 @@ else
 fi
 
 echo "==> compiling dependencies with uv"
-$conda_bin run -n "$env_name" python -m uv pip compile pyproject.toml --all-extras -o requirements.lock.txt
+$conda_bin run -n "$env_name" uv pip compile pyproject.toml --all-extras -o requirements.lock.txt
 
 echo "==> installing project dependencies with uv"
-$conda_bin run -n "$env_name" python -m uv pip sync requirements.lock.txt
-$conda_bin run -n "$env_name" python -m uv pip install -e .
+$conda_bin run -n "$env_name" uv pip sync requirements.lock.txt
+$conda_bin run -n "$env_name" uv pip install -e .
 
 echo "==> installing pre-commit hooks"
-$conda_bin run -n "$env_name" python -m uv run pre-commit install
+$conda_bin run -n "$env_name" uv run pre-commit install
 
 echo "==> registering jupyter kernel ($env_name_safe)"
 $conda_bin run -n "$env_name" python -m ipykernel install --user --name "$env_name_safe" --display-name "$project_slug (uv)"
@@ -420,5 +427,20 @@ if command -v git >/dev/null 2>&1; then
     git commit -m "chore: initial scaffold (conda+uv ml project)" >/dev/null 2>&1
 fi
 
-echo
-echo "✅ done!"
+cat << END_MESSAGE
+
+✅ All done!
+
+To begin playing with your shiny new project, run the following command to change to your project directory:
+
+   cd $project_slug
+
+And then activate your new Conda environment:
+
+   conda activate $env_name
+
+You can also run commands within the environment without activating it first:
+
+   conda run -n $env_name <command>
+
+END_MESSAGE
